@@ -6,13 +6,12 @@
 Title:              mac_blocker.py
 Description:        Find and block unauthorized clients from FHI-360 Meraki networks
 Author:             Ricky Laney
-Version:            0.0.5
 '''
 import csv
 from datetime import datetime
 import os
 import meraki
-from typing import Union
+from typing import Tuple, Union
 
 
 # Either input your API key below, or set an environment variable
@@ -95,7 +94,7 @@ class FHI360:
     """ Class that takes action on clients on FHI-360's Meraki network
 
     :param:str:  meraki_api = instance of Meraki API (required)
-    :param:int:  num_days = 30 number of days to look back (default)
+    :param:int:  num_days = number of days to look back (default 30)
     """
 
     def __init__(self, meraki_api: meraki.DashboardAPI,
@@ -108,54 +107,68 @@ class FHI360:
                             self.org_id
                         )
                     )
-        assert self.org_id == self.org['id'], f"Org ids not identical: \
-                                      {self.org_id} != {self.org['id']}"
+        assert self.org_id == self.org['id'],
+            f"Org ids not identical: {self.org_id} != {self.org['id']}"
         self.org_name = self.org['name']
 
-    def _make_call(self, call) -> Union[dict, list, None]:
+    def _make_call(
+        self,
+        call: callable,
+        catch_errors: bool=False,
+    ) -> Union[str, dict, list, None]:
+        response = None
         try:
             response = call
         except meraki.APIError as e:
-            print(f"Meraki API error: {e}")
-            print(f"status code = {e.status}")
-            print(f"reason = {e.reason}")
-            print(f"error = {e.message}")
-            raise e
-        except Exception as e:
-            raise FHI360ClientError(f"Unknown error: {e}")
+            error_msg = f"""
+                Meraki API error: {e}
+                status code = {e.status}
+                reason = {e.reason}
+                error = {e.message}
+            """
+            if catch_errors:
+                response = error_msg
+            else:
+                raise FHI360ClientError(error_msg)
         finally:
-            return response or None
+            return response
 
     def get_networks(self) -> Union[list, None]:
         nets = self._make_call(
-                self.api.organizations.getOrganizationNetworks(
-                        self.org_id
-                    )
-                )
-        return nets or None
+            self.api.organizations.getOrganizationNetworks(
+                self.org_id
+            )
+        )
+        return nets
 
     def get_clients(self, network_id: str) -> Union[list, None]:
         clients = self._make_call(
-                    self.api.networks.getNetworkClients(
-                            network_id,
-                            timespan=self.timespan,
-                            perPage=1000,
-                            total_pages='all',
-                        )
-                    )
-        return clients or None
+            self.api.networks.getNetworkClients(
+                network_id,
+                timespan=self.timespan,
+                perPage=1000,
+                total_pages='all',
+            )
+        )
+        return clients
 
-    def block_client(self, net_id: str, client_id: str) -> bool:
+    def block_client(
+        self,
+        net_id: str,
+        client_id: str,
+        catch_errors: bool=True,
+    ) -> Tuple[bool, Union[str, None]]:
         resp = self._make_call(
-                self.api.networks.updateNetworkClientPolicy(
-                        net_id,
-                        client_id,
-                        'Blocked',
-                    )
-                )
-        if resp and resp['devicePolicy'] == 'Blocked':
-            return True
-        return False
+            self.api.networks.updateNetworkClientPolicy(
+                net_id,
+                client_id,
+                'Blocked',
+            ),
+            catch_errors=catch_errors,
+        )
+        if isinstance(resp, dict) and resp['devicePolicy'] == 'Blocked':
+            return True, None
+        return False, resp
 
 
 def main():
@@ -202,12 +215,13 @@ def main():
                     client['blocked'] = False
                     if BLOCK_BAD_CLIENTS:
                         print(f"Now blocking bad client: {client['id']}")
-                        success = fhi.block_client(net['id'], client['id'])
+                        success, msg = fhi.block_client(net['id'], client['id'])
                         if success:
                             client['blocked'] = True
                             print(f"Successfully blocked: {client['id']}")
                         else:
-                            print(f"FAILED to block: {client['id']}")
+                            client['blocked'] = 'Failed'
+                            print(f"FAILED to block: {client['id']}\n\n{msg}")
                 file_name = f"{net['name'].replace(' ', '')}.csv"
                 output_file = open(f"{folder_dir}/{file_name}",
                                     mode='w', newline='\n')
