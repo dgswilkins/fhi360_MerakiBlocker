@@ -22,6 +22,9 @@ api_key = os.environ.get('MERAKI_DASHBOARD_API_KEY', YOUR_API_KEY)
 # Changing this will change the policy for bad clients to "Blocked"
 BLOCK_BAD_CLIENTS = False
 
+# Catch errors and continue processing
+CATCH_ERRORS = True
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 base_url = 'https://api.meraki.com/api/v1'
 
@@ -114,23 +117,26 @@ class FHI360:
     def _make_call(
         self,
         call: callable,
-        catch_errors: bool=False,
+        catch_errors: bool=True,
     ) -> Union[str, dict, list, None]:
-        response = None
+        response = error_msg = None
         try:
             response = call
-        except meraki.APIError as e:
+        except meraki.exceptions.APIError as e:
             error_msg = f"""
                 Meraki API error: {e}
                 status code = {e.status}
                 reason = {e.reason}
                 error = {e.message}
             """
-            if catch_errors:
-                response = error_msg
-            else:
-                raise FHI360ClientError(error_msg)
+        except Exception as e:
+            error_msg = e
         finally:
+            if error_msg:
+                if catch_errors:
+                    response = error_msg
+                else:
+                    raise FHI360ClientError(error_msg)
             return response
 
     def get_networks(self) -> Union[list, None]:
@@ -215,7 +221,11 @@ def main():
                     client['blocked'] = False
                     if BLOCK_BAD_CLIENTS:
                         print(f"Now blocking bad client: {client['id']}")
-                        success, msg = fhi.block_client(net['id'], client['id'])
+                        success, msg = fhi.block_client(
+                            net['id'],
+                            client['id'],
+                            catch_errors=CATCH_ERRORS,
+                        )
                         if success:
                             client['blocked'] = True
                             print(f"Successfully blocked: {client['id']}")
