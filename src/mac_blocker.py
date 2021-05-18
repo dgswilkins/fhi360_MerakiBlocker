@@ -122,7 +122,7 @@ class FHI360:
         response = error_msg = None
         try:
             response = call
-        except meraki.exceptions.APIError as e:
+        except meraki.APIError as e:
             error_msg = f"""
                 Meraki API error: {e}
                 status code = {e.status}
