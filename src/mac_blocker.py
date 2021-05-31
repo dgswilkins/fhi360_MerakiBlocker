@@ -119,7 +119,7 @@ class FHI360:
     def __init__(self, meraki_api: meraki.DashboardAPI,
                              num_days: int=30) -> None:
         self.timespan = 60 * 60 * 24 * num_days
-        self.org_id = '324893'
+        self.org_id = os.environ.get('ORGID', '123456')
         self.api = meraki_api
         self.org = self._make_call(
                     self.api.organizations.getOrganization(
