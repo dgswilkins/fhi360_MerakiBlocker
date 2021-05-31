@@ -13,6 +13,22 @@ import os
 import meraki
 from typing import Tuple, Union
 
+import smtplib
+from email.message import EmailMessage
+from email.headerregistry import Address
+
+# Set the SMTP Server address from the environment
+SMTPSRV = os.environ.get('SMTPSERVER','your.smtp.server')
+# Set the Email address to send from
+sender_name = os.environ.get('SNAME', 'sender')
+sender_prefix = os.environ.get('SPREFIX','user')
+sender_suffix  = os.environ.get('SSUFFIX','domain.com')
+EmailFrom = Address(sender_name, sender_prefix, sender_suffix)
+# Set the Email address to send the email to
+rcpt_name = os.environ.get('RNAME', 'Recipient')
+rcpt_prefix = os.environ.get('RPREFIX','rcpt')
+rcpt_suffix  = os.environ.get('RSUFFIX','domain.com')
+EmailTo = Address(rcpt_name, rcpt_prefix, rcpt_suffix)
 
 # Either input your API key below, or set an environment variable
 # for example, in Terminal on macOS:  export MERAKI_DASHBOARD_API_KEY=093b24e85df15a3e66f1fc359f4c48493eaa1b73
@@ -110,8 +126,7 @@ class FHI360:
                             self.org_id
                         )
                     )
-        assert self.org_id == self.org['id'],
-            f"Org ids not identical: {self.org_id} != {self.org['id']}"
+        assert self.org_id == self.org['id'],f"Org ids not identical: {self.org_id} != {self.org['id']}"
         self.org_name = self.org['name']
 
     def _make_call(
@@ -269,6 +284,19 @@ def main():
                         row['Network Name'] = net['name']
                         row['Network ID'] = net['id']
                         csv_writer.writerow(row)
+    os.fsync(output_file)
+    output_file.close()
+    msg = EmailMessage()
+    msg['Subject'] = 'Meraki Bad client Report'
+    msg['From'] = EmailFrom
+    msg['To'] = EmailTo
+    msg.set_content('Report attached')
+    with open(total_file, 'rb') as content_file:
+        content = content_file.read()
+        msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=total_file)
+    s = smtplib.SMTP(SMTPSRV)
+    s.send_message(msg)
+    s.quit()
 
 
 if __name__ == '__main__':
