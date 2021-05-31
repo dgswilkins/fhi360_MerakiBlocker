@@ -248,9 +248,9 @@ def main():
     output_file = open(total_file, mode='w', newline='\n')
     field_names = ['id', 'mac', 'description', 'ip', 'ip6', 'ip6Local', 'user',
                    'firstSeen', 'lastSeen', 'manufacturer', 'os',
-                   'recentDeviceSerial', 'recentDeviceName', 'recentDeviceMac',
+                   'recentDeviceSerial', 'recentDeviceName', 'recentDeviceMac', 'recentDeviceConnection',
                    'ssid', 'vlan', 'switchport', 'usage', 'status', 'notes',
-                   'smInstalled', 'groupPolicy8021x', 'blocked']
+                   'smInstalled', 'groupPolicy8021x', 'adaptivePolicyGroup', 'blocked']
     field_names.insert(0, "Network Name")
     field_names.insert(1, "Network ID")
     csv_writer = csv.DictWriter(output_file, field_names, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
@@ -260,15 +260,10 @@ def main():
         if file_name in os.listdir(folder_dir):
             with open(f"{folder_dir}/{file_name}") as input_file:
                 csv_reader = csv.DictReader(input_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
-                try:
-                    next(csv_reader)
-                except StopIteration:
-                    continue
-                else:
-                    for row in csv_reader:
-                        row['Network Name'] = net['name']
-                        row['Network ID'] = net['id']
-                        csv_writer.writerow(row)
+                for row in csv_reader:
+                    row['Network Name'] = net['name']
+                    row['Network ID'] = net['id']
+                    csv_writer.writerow(row)
 
 
 if __name__ == '__main__':
