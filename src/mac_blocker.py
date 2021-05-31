@@ -179,14 +179,29 @@ class FHI360:
         client_id: str,
         catch_errors: bool=True,
     ) -> Tuple[bool, Union[str, None]]:
-        resp = self._make_call(
-            self.api.networks.updateNetworkClientPolicy(
+        resp = None
+        error_msg = None
+        try:
+            resp = self.api.networks.updateNetworkClientPolicy(
                 net_id,
                 client_id,
                 'Blocked',
-            ),
-            catch_errors=catch_errors,
-        )
+            )
+        except meraki.APIError as e:
+            error_msg = f"""
+                Meraki API error: {e}
+                status code = {e.status}
+                reason = {e.reason}
+                error = {e.message}
+            """
+        except Exception as e:
+            error_msg = e
+        finally:
+            if error_msg:
+                if catch_errors:
+                    resp = error_msg
+                else:
+                    raise FHI360ClientError(error_msg)
         if isinstance(resp, dict) and resp['devicePolicy'] == 'Blocked':
             return True, None
         return False, resp
@@ -235,7 +250,7 @@ def main():
                     client['usage'] = f"sent={sent_usage} recv={recv_usage}"
                     client['blocked'] = False
                     if BLOCK_BAD_CLIENTS:
-                        print(f"Now blocking bad client: {client['id']}")
+                        print(f"Now trying to block bad client: {client['id']}")
                         success, msg = fhi.block_client(
                             net['id'],
                             client['id'],
