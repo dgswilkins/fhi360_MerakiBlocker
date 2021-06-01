@@ -162,16 +162,35 @@ class FHI360:
         )
         return nets
 
-    def get_clients(self, network_id: str) -> Union[list, None]:
-        clients = self._make_call(
-            self.api.networks.getNetworkClients(
-                network_id,
-                timespan=self.timespan,
-                perPage=1000,
-                total_pages='all',
-            )
-        )
-        return clients
+    def get_clients(self, network_id: str,
+        catch_errors: bool=True) -> Tuple[bool, Union[list, None]]:
+        resp = None
+        error_msg = None
+        try:
+            resp = self.api.networks.getNetworkClients(
+                    network_id,
+                    timespan=self.timespan,
+                    perPage=1000,
+                    total_pages='all',
+                )
+        except meraki.APIError as e:
+            error_msg = f"""
+                Meraki API error: {e}
+                status code = {e.status}
+                reason = {e.reason}
+                error = {e.message}
+            """
+        except Exception as e:
+            error_msg = e
+        finally:
+            if error_msg:
+                if catch_errors:
+                    resp = error_msg
+                else:
+                    raise FHI360ClientError(error_msg)
+        if isinstance(resp, list):
+            return True, resp
+        return False, resp
 
     def block_client(
         self,
@@ -237,8 +256,8 @@ def main():
     print(f"Found {total} networks in organization {fhi.org_name}")
     for net in networks:
         print(f"Searching clients in network {net['name']} ({counter} of {total})")
-        clients = fhi.get_clients(net['id'])
-        if clients:
+        success, clients = fhi.get_clients(net['id'])
+        if success:
             bad_clients = [client for client in clients if \
                             validator.is_bad_client(client)]
             if bad_clients:
@@ -248,7 +267,7 @@ def main():
                     sent_usage = client['usage']['sent']
                     recv_usage = client['usage']['recv']
                     client['usage'] = f"sent={sent_usage} recv={recv_usage}"
-                    client['blocked'] = False
+                    client['blocked'] = 'Unknown'
                     if BLOCK_BAD_CLIENTS:
                         print(f"Now trying to block bad client: {client['id']}")
                         success, msg = fhi.block_client(
@@ -272,6 +291,8 @@ def main():
                 csv_writer.writeheader()
                 csv_writer.writerows(bad_clients)
                 output_file.close()
+        else:
+            print(f"get_clients failed for network {net['id']}\n\n{msg}")
         counter += 1
     # Stitch together one consolidated CSV report of all bad clients
     total_file = os.path.join(HERE, f"{folder_name}.csv")
