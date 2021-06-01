@@ -128,7 +128,7 @@ class FHI360:
             'id'], f"Org ids not identical: {self.org_id} != {self.org['id']}"
         self.org_name = self.org['name']
 
-    def get_networks(self, catch_errors: bool=True) -> Tuple[bool, Union[list, None]]:
+    def get_networks(self, catch_errors: bool=True) -> Tuple[bool, Union[list, str, Exception]]:
         resp = None
         error_msg = None
         try:
@@ -151,11 +151,13 @@ class FHI360:
                 else:
                     raise FHI360ClientError(error_msg)
         if isinstance(resp, list):
+            # Return a sorted list?
+            # resp.sort(key=lambda x: x.get('name'))
             return True, resp
         return False, resp
 
     def get_clients(self, network_id: str,
-        catch_errors: bool=True) -> Tuple[bool, Union[list, None]]:
+        catch_errors: bool=True) -> Tuple[bool, Union[list, str, Exception]]:
         resp = None
         error_msg = None
         try:
@@ -267,7 +269,7 @@ def main():
                         client['blocked'] = 'Unknown'
                         if BLOCK_BAD_CLIENTS:
                             print(f"Now trying to block bad client: {client['id']}")
-                            success, msg = fhi.block_client(
+                            success, error_msg = fhi.block_client(
                                 net['id'],
                                 client['id'],
                                 catch_errors=CATCH_ERRORS,
@@ -277,7 +279,7 @@ def main():
                                 print(f"Successfully blocked: {client['id']}")
                             else:
                                 client['blocked'] = 'Failed'
-                                print(f"FAILED to block: {client['id']}\n\n{msg}")
+                                print(f"FAILED to block: {client['id']}\n\n{error_msg}")
                     file_name = f"{net['name'].replace(' ', '')}.csv"
                     output_file = open(f"{folder_dir}/{file_name}",
                                         mode='w', newline='\n')
@@ -289,7 +291,7 @@ def main():
                     csv_writer.writerows(bad_clients)
                     output_file.close()
             else:
-                print(f"get_clients failed for network {net['id']}\n\n{msg}")
+                print(f"get_clients failed for network {net['id']}\n\n{clients}")
             counter += 1
         # Stitch together one consolidated CSV report of all bad clients
         total_file = os.path.join(HERE, f"{folder_name}.csv")
@@ -319,6 +321,7 @@ def main():
             content = content_file.read()
             msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=total_file)
     else:
+        print(f"get_networks failed \n\n{networks}")
         msg.set_content('No Networks found')
     s = smtplib.SMTP(SMTPSRV)
     s.send_message(msg)
