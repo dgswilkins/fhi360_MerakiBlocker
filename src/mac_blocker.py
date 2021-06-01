@@ -117,42 +117,16 @@ class FHI360:
     """
 
     def __init__(self, meraki_api: meraki.DashboardAPI,
-                             num_days: int=30) -> None:
+                 num_days: int = 30) -> None:
         self.timespan = 60 * 60 * 24 * num_days
         self.org_id = os.environ.get('ORGID', '123456')
         self.api = meraki_api
-        self.org = self._make_call(
-                    self.api.organizations.getOrganization(
-                            self.org_id
-                        )
-                    )
-        assert self.org_id == self.org['id'],f"Org ids not identical: {self.org_id} != {self.org['id']}"
+        self.org = self.api.organizations.getOrganization(
+            self.org_id
+        )
+        assert self.org_id == self.org[
+            'id'], f"Org ids not identical: {self.org_id} != {self.org['id']}"
         self.org_name = self.org['name']
-
-    def _make_call(
-        self,
-        call: callable,
-        catch_errors: bool=True,
-    ) -> Union[str, dict, list, None]:
-        response = error_msg = None
-        try:
-            response = call
-        except meraki.APIError as e:
-            error_msg = f"""
-                Meraki API error: {e}
-                status code = {e.status}
-                reason = {e.reason}
-                error = {e.message}
-            """
-        except Exception as e:
-            error_msg = e
-        finally:
-            if error_msg:
-                if catch_errors:
-                    response = error_msg
-                else:
-                    raise FHI360ClientError(error_msg)
-            return response
 
     def get_networks(self, catch_errors: bool=True) -> Tuple[bool, Union[list, None]]:
         resp = None
