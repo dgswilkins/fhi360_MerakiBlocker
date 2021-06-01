@@ -154,13 +154,31 @@ class FHI360:
                     raise FHI360ClientError(error_msg)
             return response
 
-    def get_networks(self) -> Union[list, None]:
-        nets = self._make_call(
-            self.api.organizations.getOrganizationNetworks(
-                self.org_id
-            )
-        )
-        return nets
+    def get_networks(self, catch_errors: bool=True) -> Tuple[bool, Union[list, None]]:
+        resp = None
+        error_msg = None
+        try:
+            resp = self.api.organizations.getOrganizationNetworks(
+                    self.org_id
+                )
+        except meraki.APIError as e:
+            error_msg = f"""
+                Meraki API error: {e}
+                status code = {e.status}
+                reason = {e.reason}
+                error = {e.message}
+            """
+        except Exception as e:
+            error_msg = e
+        finally:
+            if error_msg:
+                if catch_errors:
+                    resp = error_msg
+                else:
+                    raise FHI360ClientError(error_msg)
+        if isinstance(resp, list):
+            return True, resp
+        return False, resp
 
     def get_clients(self, network_id: str,
         catch_errors: bool=True) -> Tuple[bool, Union[list, None]]:
@@ -168,11 +186,11 @@ class FHI360:
         error_msg = None
         try:
             resp = self.api.networks.getNetworkClients(
-                    network_id,
-                    timespan=self.timespan,
-                    perPage=1000,
-                    total_pages='all',
-                )
+                network_id,
+                timespan=self.timespan,
+                perPage=1000,
+                total_pages='all',
+            )
         except meraki.APIError as e:
             error_msg = f"""
                 Meraki API error: {e}
@@ -250,81 +268,84 @@ def main():
     folder_dir = os.path.join(HERE, folder_name)
     if folder_name not in os.listdir(HERE):
         os.mkdir(folder_dir)
-    networks = fhi.get_networks()
-    total = len(networks)
-    counter = 1
-    print(f"Found {total} networks in organization {fhi.org_name}")
-    for net in networks:
-        print(f"Searching clients in network {net['name']} ({counter} of {total})")
-        success, clients = fhi.get_clients(net['id'])
-        if success:
-            bad_clients = [client for client in clients if \
-                            validator.is_bad_client(client)]
-            if bad_clients:
-                print(f"Found {len(bad_clients)} bad clients total")
-                for client in bad_clients:
-                    # Reformat usage for readability
-                    sent_usage = client['usage']['sent']
-                    recv_usage = client['usage']['recv']
-                    client['usage'] = f"sent={sent_usage} recv={recv_usage}"
-                    client['blocked'] = 'Unknown'
-                    if BLOCK_BAD_CLIENTS:
-                        print(f"Now trying to block bad client: {client['id']}")
-                        success, msg = fhi.block_client(
-                            net['id'],
-                            client['id'],
-                            catch_errors=CATCH_ERRORS,
-                        )
-                        if success:
-                            client['blocked'] = True
-                            print(f"Successfully blocked: {client['id']}")
-                        else:
-                            client['blocked'] = 'Failed'
-                            print(f"FAILED to block: {client['id']}\n\n{msg}")
-                file_name = f"{net['name'].replace(' ', '')}.csv"
-                output_file = open(f"{folder_dir}/{file_name}",
-                                    mode='w', newline='\n')
-                field_names = bad_clients[0].keys()
-                csv_writer = csv.DictWriter(output_file, field_names,
-                                            delimiter=',', quotechar='"',
-                                            quoting=csv.QUOTE_ALL)
-                csv_writer.writeheader()
-                csv_writer.writerows(bad_clients)
-                output_file.close()
-        else:
-            print(f"get_clients failed for network {net['id']}\n\n{msg}")
-        counter += 1
-    # Stitch together one consolidated CSV report of all bad clients
-    total_file = os.path.join(HERE, f"{folder_name}.csv")
-    output_file = open(total_file, mode='w', newline='\n')
-    field_names = ['id', 'mac', 'description', 'ip', 'ip6', 'ip6Local', 'user',
-                   'firstSeen', 'lastSeen', 'manufacturer', 'os',
-                   'recentDeviceSerial', 'recentDeviceName', 'recentDeviceMac', 'recentDeviceConnection',
-                   'ssid', 'vlan', 'switchport', 'usage', 'status', 'notes',
-                   'smInstalled', 'groupPolicy8021x', 'adaptivePolicyGroup', 'blocked']
-    field_names.insert(0, "Network Name")
-    field_names.insert(1, "Network ID")
-    csv_writer = csv.DictWriter(output_file, field_names, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
-    csv_writer.writeheader()
-    for net in networks:
-        file_name = f"{net['name'].replace(' ', '')}.csv"
-        if file_name in os.listdir(folder_dir):
-            with open(f"{folder_dir}/{file_name}") as input_file:
-                csv_reader = csv.DictReader(input_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
-                for row in csv_reader:
-                    row['Network Name'] = net['name']
-                    row['Network ID'] = net['id']
-                    csv_writer.writerow(row)
-    os.fsync(output_file)
-    output_file.close()
     msg = EmailMessage()
     msg['Subject'] = 'Meraki Bad client Report'
     msg['From'] = EmailFrom
     msg['To'] = EmailTo
-    msg.set_content('Report attached')
-    with open(total_file, 'rb') as content_file:
-        content = content_file.read()
-        msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=total_file)
+    success, networks = fhi.get_networks()
+    if success:
+        total = len(networks)
+        counter = 1
+        print(f"Found {total} networks in organization {fhi.org_name}")
+        for net in networks:
+            print(f"Searching clients in network {net['name']} ({counter} of {total})")
+            success, clients = fhi.get_clients(net['id'])
+            if success:
+                bad_clients = [client for client in clients if \
+                                validator.is_bad_client(client)]
+                if bad_clients:
+                    print(f"Found {len(bad_clients)} bad clients total")
+                    for client in bad_clients:
+                        # Reformat usage for readability
+                        sent_usage = client['usage']['sent']
+                        recv_usage = client['usage']['recv']
+                        client['usage'] = f"sent={sent_usage} recv={recv_usage}"
+                        client['blocked'] = 'Unknown'
+                        if BLOCK_BAD_CLIENTS:
+                            print(f"Now trying to block bad client: {client['id']}")
+                            success, msg = fhi.block_client(
+                                net['id'],
+                                client['id'],
+                                catch_errors=CATCH_ERRORS,
+                            )
+                            if success:
+                                client['blocked'] = True
+                                print(f"Successfully blocked: {client['id']}")
+                            else:
+                                client['blocked'] = 'Failed'
+                                print(f"FAILED to block: {client['id']}\n\n{msg}")
+                    file_name = f"{net['name'].replace(' ', '')}.csv"
+                    output_file = open(f"{folder_dir}/{file_name}",
+                                        mode='w', newline='\n')
+                    field_names = bad_clients[0].keys()
+                    csv_writer = csv.DictWriter(output_file, field_names,
+                                                delimiter=',', quotechar='"',
+                                                quoting=csv.QUOTE_ALL)
+                    csv_writer.writeheader()
+                    csv_writer.writerows(bad_clients)
+                    output_file.close()
+            else:
+                print(f"get_clients failed for network {net['id']}\n\n{msg}")
+            counter += 1
+        # Stitch together one consolidated CSV report of all bad clients
+        total_file = os.path.join(HERE, f"{folder_name}.csv")
+        output_file = open(total_file, mode='w', newline='\n')
+        field_names = ['id', 'mac', 'description', 'ip', 'ip6', 'ip6Local', 'user',
+                    'firstSeen', 'lastSeen', 'manufacturer', 'os',
+                    'recentDeviceSerial', 'recentDeviceName', 'recentDeviceMac', 'recentDeviceConnection',
+                    'ssid', 'vlan', 'switchport', 'usage', 'status', 'notes',
+                    'smInstalled', 'groupPolicy8021x', 'adaptivePolicyGroup', 'blocked']
+        field_names.insert(0, "Network Name")
+        field_names.insert(1, "Network ID")
+        csv_writer = csv.DictWriter(output_file, field_names, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+        csv_writer.writeheader()
+        for net in networks:
+            file_name = f"{net['name'].replace(' ', '')}.csv"
+            if file_name in os.listdir(folder_dir):
+                with open(f"{folder_dir}/{file_name}") as input_file:
+                    csv_reader = csv.DictReader(input_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+                    for row in csv_reader:
+                        row['Network Name'] = net['name']
+                        row['Network ID'] = net['id']
+                        csv_writer.writerow(row)
+        os.fsync(output_file)
+        output_file.close()
+        msg.set_content('Report attached')
+        with open(total_file, 'rb') as content_file:
+            content = content_file.read()
+            msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=total_file)
+    else:
+        msg.set_content('No Networks found')
     s = smtplib.SMTP(SMTPSRV)
     s.send_message(msg)
     s.quit()
