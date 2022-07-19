@@ -9,7 +9,7 @@ How to run...
 
 - Open a terminal and Clone the repo.
   ```bash
-  git clone https://github.com/IE-OnDemand/fhi360_MerakiBlocker
+  git clone https://github.com/dgswilkins/fhi360_MerakiBlocker.git
   cd fhi360_MerakiBlocker
   ```
 
@@ -19,12 +19,6 @@ How to run...
   ```
 
 - Create environment variable MERAKI_DASHBOARD_API with **your** key *or* update the scripts manually with **your** Meraki API Key.
-  Example using environment variables (recommended):
-  ```bash
-  touch .envrc
-  echo "export MERAKI_DASHBOARD_API=987654321_MY_SUPER_SECRET_MERAKI_KEY_123456789" >> .envrc
-  source .envrc
-  ```
 
 - If you wish to **block** clients, you must update the script manually and change the following:
   ```python
