@@ -25,4 +25,7 @@ repos
 *.csv
 .envrc
 
-PyEnv/*
+# Virtual Environment
+#####################
+.venv/
+PyEnv/
