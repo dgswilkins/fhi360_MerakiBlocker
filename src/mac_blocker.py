@@ -25,9 +25,15 @@ BLOCK_BAD_CLIENTS = False
 # Catch errors and continue processing
 CATCH_ERRORS = True
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+# Timespan for pulling clients in seconds.
+# Set to 1hr (60 * 60) to match script.
+# PLEASE ADJUST THIS TO MATCH WHEN THE SCRIPT RUNS
+CLIENT_TIMESPAN = 3600
+
+# Base URL for Meraki API
 base_url = 'https://api.meraki.com/api/v1'
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 class FHI360ClientError(Exception):
     """ Custom error class
@@ -100,9 +106,8 @@ class FHI360:
     :param:int:  num_days = number of days to look back (default 30)
     """
 
-    def __init__(self, meraki_api: meraki.DashboardAPI,
-                             num_days: int=30) -> None:
-        self.timespan = 60 * 60 * 24 * num_days
+    def __init__(self, meraki_api: meraki.DashboardAPI) -> None:
+        self.timespan = CLIENT_TIMESPAN
         self.org_id = '324893'
         self.api = meraki_api
         self.org = self._make_call(
@@ -178,7 +183,8 @@ class FHI360:
 
 
 def main():
-    tday = f"{datetime.now():%m-%d-%Y}"
+    # Added hour and minute to log folder for CLIENT_TIMESPAN
+    tday = f"{datetime.now():%m-%d-%Y_%H-%M}"
     log_file_prefix = f"fhi-360_{tday}_"
     log_dir = os.path.join(HERE, "logs")
     if "logs" not in os.listdir(HERE):
