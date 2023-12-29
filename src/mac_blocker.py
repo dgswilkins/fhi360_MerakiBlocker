@@ -320,10 +320,11 @@ def main():
         msg.set_content('Report attached')
         with open(total_file, 'rb') as content_file:
             content = content_file.read()
-            msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=total_file)
+            msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=f"{folder_name}.csv")
     else:
         print(f"get_networks failed \n\n{networks}")
         msg.set_content('No Networks found')
+    print(f"\nsending report for {fhi.org_name}")
     s = smtplib.SMTP(SMTPSRV)
     s.send_message(msg)
     s.quit()
