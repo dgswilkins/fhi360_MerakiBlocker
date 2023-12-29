@@ -300,8 +300,8 @@ def main():
         field_names = ['id', 'mac', 'description', 'ip', 'ip6', 'ip6Local', 'user',
                     'firstSeen', 'lastSeen', 'manufacturer', 'os',
                     'recentDeviceSerial', 'recentDeviceName', 'recentDeviceMac', 'recentDeviceConnection',
-                    'ssid', 'vlan', 'switchport', 'usage', 'status', 'notes',
-                    'smInstalled', 'groupPolicy8021x', 'adaptivePolicyGroup', 'blocked']
+                    'ssid', 'vlan', 'switchport', 'usage', 'status', 'notes', 'pskGroup', 'namedVlan',
+                    'smInstalled', 'groupPolicy8021x', 'adaptivePolicyGroup', 'blocked', 'deviceTypePrediction']
         field_names.insert(0, "Network Name")
         field_names.insert(1, "Network ID")
         csv_writer = csv.DictWriter(output_file, field_names, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
