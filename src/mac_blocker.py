@@ -10,6 +10,8 @@ Author:             Ricky Laney
 import csv
 from datetime import datetime
 import os
+import re
+import time
 import meraki
 from typing import Tuple, Union
 
@@ -220,6 +222,29 @@ class FHI360:
             return True, None
         return False, resp
 
+def purge(dir, pattern, days):
+    # number of seconds in a day 
+    day = 86400
+    current_time = time.time() 
+    regexObj = re.compile(pattern)
+    for root, dirs, files in os.walk(dir, topdown=False):
+        for name in files:
+            print(f"Checking file [{name}]")
+            path = os.path.join(root, name)
+            if bool(regexObj.search(name)):
+                # file_time is the time when the file is modified 
+                file_time = os.stat(path).st_mtime 
+            
+                # if a file is modified before N days then delete it 
+                if(file_time < current_time - day*days): 
+                    print(f"removing file [{path}]")
+                    os.remove(path)
+        for name in dirs:
+            print(f"Checking folder [{name}]")
+            path = os.path.join(root, name)
+            if len(os.listdir(path)) == 0:
+                print(f"removing folder [{path}]")
+                os.rmdir(path)
 
 def main():
     tday = f"{datetime.now():%Y-%m-%d-%H%M}"
