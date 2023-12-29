@@ -65,7 +65,8 @@ class ClientValidator:
         if self._use_manuf:
             from manuf.manuf import MacParser
             try:
-                mac_parser = MacParser(update=True)
+                mac_parser = MacParser()
+                mac_parser.update(manuf_url="https://www.wireshark.org/download/automated/data/manuf")
             except Exception as e:
                 print(f"Unable to update manuf database due to {e}")
                 mac_parser = MacParser()
