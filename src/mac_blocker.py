@@ -18,22 +18,22 @@ from email.message import EmailMessage
 from email.headerregistry import Address
 
 # Set the SMTP Server address from the environment
-SMTPSRV = os.environ.get('SMTPSERVER','your.smtp.server')
+SMTPSRV = os.environ.get('MBSMTPSERVER','your.smtp.server')
 # Set the Email address to send from
-sender_name = os.environ.get('SNAME', 'sender')
-sender_prefix = os.environ.get('SPREFIX','user')
-sender_suffix  = os.environ.get('SSUFFIX','domain.com')
+sender_name = os.environ.get('MBSNAME', 'sender')
+sender_prefix = os.environ.get('MBSPREFIX','user')
+sender_suffix  = os.environ.get('MBSSUFFIX','domain.com')
 EmailFrom = Address(sender_name, sender_prefix, sender_suffix)
 # Set the Email address to send the email to
-rcpt_name = os.environ.get('RNAME', 'Recipient')
-rcpt_prefix = os.environ.get('RPREFIX','rcpt')
-rcpt_suffix  = os.environ.get('RSUFFIX','domain.com')
+rcpt_name = os.environ.get('MBRNAME', 'Recipient')
+rcpt_prefix = os.environ.get('MBRPREFIX','rcpt')
+rcpt_suffix  = os.environ.get('MBRSUFFIX','domain.com')
 EmailTo = Address(rcpt_name, rcpt_prefix, rcpt_suffix)
 
 # Either input your API key below, or set an environment variable
 # for example, in Terminal on macOS:  export MERAKI_DASHBOARD_API_KEY=093b24e85df15a3e66f1fc359f4c48493eaa1b73
 YOUR_API_KEY = 'YOUR_API_KEY_GOES_HERE_DO_NOT_USE_THIS_ONE'
-api_key = os.environ.get('MERAKI_DASHBOARD_API_KEY', YOUR_API_KEY)
+api_key = os.environ.get('MB_API_KEY', YOUR_API_KEY)
 
 # Changing this will change the policy for bad clients to "Blocked"
 BLOCK_BAD_CLIENTS = False
@@ -119,7 +119,7 @@ class FHI360:
     def __init__(self, meraki_api: meraki.DashboardAPI,
                  num_days: int = 30) -> None:
         self.timespan = 60 * 60 * 24 * num_days
-        self.org_id = os.environ.get('ORGID', '123456')
+        self.org_id = os.environ.get('MBORGID', '123456')
         self.api = meraki_api
         self.org = self.api.organizations.getOrganization(
             self.org_id
