@@ -233,6 +233,7 @@ def main():
     api = meraki.DashboardAPI(
         api_key=api_key,
         base_url=base_url,
+        maximum_retries=4,
         output_log=True,
         log_file_prefix=log_file_prefix,
         log_path=log_dir,
