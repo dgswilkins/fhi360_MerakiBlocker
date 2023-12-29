@@ -222,7 +222,7 @@ class FHI360:
 
 
 def main():
-    tday = f"{datetime.now():%m-%d-%Y}"
+    tday = f"{datetime.now():%Y-%m-%d-%H%M}"
     log_file_prefix = f"FHI-360"
     log_dir = os.path.join(HERE, "logs")
     if "logs" not in os.listdir(HERE):
