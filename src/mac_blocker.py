@@ -153,7 +153,7 @@ class FHI360:
                     raise FHI360ClientError(error_msg)
         if isinstance(resp, list):
             # Return a sorted list?
-            # resp.sort(key=lambda x: x.get('name'))
+            resp.sort(key=lambda x: x.get('name'))
             return True, resp
         return False, resp
 
