@@ -19,6 +19,9 @@ import smtplib
 from email.message import EmailMessage
 from email.headerregistry import Address
 
+# only print if we are testing. Set the condition to False for production
+verboseprint = print if True else lambda *a, **k: None
+
 # Set the SMTP Server address from the environment
 SMTPSRV = os.environ.get('MBSMTPSERVER','your.smtp.server')
 # Set the Email address to send from
@@ -70,7 +73,7 @@ class ClientValidator:
                 mac_parser = MacParser()
                 mac_parser.update(manuf_url="https://www.wireshark.org/download/automated/data/manuf")
             except Exception as e:
-                print(f"Unable to update manuf database due to {e}")
+                verboseprint(f"Unable to update manuf database due to {e}")
                 mac_parser = MacParser()
             self.parser = mac_parser
         # Load these from file once and use throughout
@@ -229,7 +232,7 @@ def purge(dir, pattern, days):
     regexObj = re.compile(pattern)
     for root, dirs, files in os.walk(dir, topdown=False):
         for name in files:
-            print(f"Checking file [{name}]")
+            verboseprint(f"Checking file [{name}]")
             path = os.path.join(root, name)
             if bool(regexObj.search(name)):
                 # file_time is the time when the file is modified 
@@ -237,13 +240,13 @@ def purge(dir, pattern, days):
             
                 # if a file is modified before N days then delete it 
                 if(file_time < current_time - day*days): 
-                    print(f"removing file [{path}]")
+                    verboseprint(f"removing file [{path}]")
                     os.remove(path)
         for name in dirs:
-            print(f"Checking folder [{name}]")
+            verboseprint(f"Checking folder [{name}]")
             path = os.path.join(root, name)
             if len(os.listdir(path)) == 0:
-                print(f"removing folder [{path}]")
+                verboseprint(f"removing folder [{path}]")
                 os.rmdir(path)
 
 def main():
@@ -266,7 +269,7 @@ def main():
     )
     # Instantiate a FHI360 class
     fhi = FHI360(api)
-    print(f"\nAnalyzing organization {fhi.org_name}:")
+    verboseprint(f"\nAnalyzing organization {fhi.org_name}:")
     folder_name = f"FHI-360_clients_{tday}"
     folder_dir = os.path.join(HERE, folder_name)
     if folder_name not in os.listdir(HERE):
@@ -279,15 +282,15 @@ def main():
     if success:
         total = len(networks)
         counter = 1
-        print(f"Found {total} networks in organization {fhi.org_name}")
+        verboseprint(f"Found {total} networks in organization {fhi.org_name}")
         for net in networks:
-            print(f"Searching clients in network {net['name']} ({counter} of {total})")
+            verboseprint(f"Searching clients in network {net['name']} ({counter} of {total})")
             success, clients = fhi.get_clients(net['id'])
             if success:
                 bad_clients = [client for client in clients if \
                                 validator.is_bad_client(client)]
                 if bad_clients:
-                    print(f"Found {len(bad_clients)} bad clients total")
+                    verboseprint(f"Found {len(bad_clients)} bad clients total")
                     for client in bad_clients:
                         # Reformat usage for readability
                         sent_usage = client['usage']['sent']
@@ -295,7 +298,7 @@ def main():
                         client['usage'] = f"sent={sent_usage} recv={recv_usage}"
                         client['blocked'] = 'Unknown'
                         if BLOCK_BAD_CLIENTS:
-                            print(f"Now trying to block bad client: {client['id']}")
+                            verboseprint(f"Now trying to block bad client: {client['id']}")
                             success, error_msg = fhi.block_client(
                                 net['id'],
                                 client['id'],
@@ -303,10 +306,10 @@ def main():
                             )
                             if success:
                                 client['blocked'] = True
-                                print(f"Successfully blocked: {client['id']}")
+                                verboseprint(f"Successfully blocked: {client['id']}")
                             else:
                                 client['blocked'] = 'Failed'
-                                print(f"FAILED to block: {client['id']}\n\n{error_msg}")
+                                verboseprint(f"FAILED to block: {client['id']}\n\n{error_msg}")
                     file_name = f"{net['name'].replace(' ', '')}.csv"
                     output_file = open(f"{folder_dir}/{file_name}",
                                         mode='w', newline='\n')
@@ -318,7 +321,7 @@ def main():
                     csv_writer.writerows(bad_clients)
                     output_file.close()
             else:
-                print(f"get_clients failed for network {net['id']}\n\n{clients}")
+                verboseprint(f"get_clients failed for network {net['id']}\n\n{clients}")
             counter += 1
         # Stitch together one consolidated CSV report of all bad clients
         total_file = os.path.join(HERE, f"{folder_name}.csv")
@@ -348,9 +351,9 @@ def main():
             content = content_file.read()
             msg.add_attachment(content, maintype='application', subtype='octet-stream', filename=f"{folder_name}.csv")
     else:
-        print(f"get_networks failed \n\n{networks}")
+        verboseprint(f"get_networks failed \n\n{networks}")
         msg.set_content('No Networks found')
-    print(f"\nsending report for {fhi.org_name}")
+    verboseprint(f"\nsending report for {fhi.org_name}")
     s = smtplib.SMTP(SMTPSRV)
     s.send_message(msg)
     s.quit()
@@ -360,4 +363,4 @@ if __name__ == '__main__':
     start_time = datetime.now()
     main()
     end_time = datetime.now()
-    print(f"\nScript complete, total runtime {end_time - start_time}")
+    verboseprint(f"\nScript complete, total runtime {end_time - start_time}")
