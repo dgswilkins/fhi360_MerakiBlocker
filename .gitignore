@@ -28,5 +28,4 @@ repos
 # Virtual Environment
 #####################
 .venv/
-PyEnv/
 .vscode/
