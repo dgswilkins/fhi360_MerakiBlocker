@@ -353,7 +353,7 @@ def main():
     else:
         verboseprint(f"get_networks failed \n\n{networks}")
         msg.set_content('No Networks found')
-    verboseprint(f"\nsending report for {fhi.org_name}")
+    verboseprint(f"\nsending report for {fhi.org_name} from {sender_name} [{sender_prefix}@{sender_suffix}] to {rcpt_name} [{rcpt_prefix}@{rcpt_suffix}]")
     s = smtplib.SMTP(SMTPSRV)
     s.send_message(msg)
     s.quit()
