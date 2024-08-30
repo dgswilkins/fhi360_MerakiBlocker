@@ -253,7 +253,7 @@ def purge(dir, pattern, days):
 
 def main():
     tday = f"{datetime.now():%Y-%m-%d-%H%M}"
-    log_file_prefix = f"FHI-360"
+    log_file_prefix = "FHI-360"
     log_dir = os.path.join(HERE, "logs")
     if "logs" not in os.listdir(HERE):
         os.mkdir(log_dir)
@@ -270,7 +270,7 @@ def main():
         print_console=False
     )
     # Instantiate a FHI360 class
-    fhi = FHI360(api)
+    fhi = FHI360(api, 1)
     verboseprint(f"\nAnalyzing organization {fhi.org_name}:")
     folder_name = f"FHI-360_clients_{tday}"
     folder_dir = os.path.join(HERE, folder_name)
