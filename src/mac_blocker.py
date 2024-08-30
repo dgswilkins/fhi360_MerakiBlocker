@@ -231,6 +231,7 @@ def purge(dir, pattern, days):
     current_time = time.time() 
     regexObj = re.compile(pattern)
     for root, dirs, files in os.walk(dir, topdown=False):
+        # iterate over the files in the current directory and remove old files
         for name in files:
             verboseprint(f"Checking file [{name}]")
             path = os.path.join(root, name)
@@ -242,6 +243,7 @@ def purge(dir, pattern, days):
                 if(file_time < current_time - day*days): 
                     verboseprint(f"removing file [{path}]")
                     os.remove(path)
+        # iterate over the directories in the current directory and remove empty directories            
         for name in dirs:
             verboseprint(f"Checking folder [{name}]")
             path = os.path.join(root, name)
