@@ -358,6 +358,8 @@ def main():
     verboseprint(f"\nsending report for {fhi.org_name} from {sender_name} [{sender_prefix}@{sender_suffix}] to {rcpt_name} [{rcpt_prefix}@{rcpt_suffix}]")
     s = smtplib.SMTP(SMTPSRV)
     s.send_message(msg)
+    purge(HERE, r".*\.csv", 30)
+    purge(HERE, r".*\.log", 30)
     s.quit()
 
 
