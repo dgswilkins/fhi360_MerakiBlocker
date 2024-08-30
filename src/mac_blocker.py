@@ -236,10 +236,10 @@ def purge(dir, pattern, days):
             verboseprint(f"Checking file [{name}]")
             path = os.path.join(root, name)
             if bool(regexObj.search(name)):
-                # file_time is the time when the file is modified 
+                # file_time is the time when the file was modified 
                 file_time = os.stat(path).st_mtime 
             
-                # if a file is modified before N days then delete it 
+                # if a file is older than N days then delete it 
                 if(file_time < current_time - day*days): 
                     verboseprint(f"removing file [{path}]")
                     os.remove(path)
