@@ -46,15 +46,9 @@ BLOCK_BAD_CLIENTS = False
 # Catch errors and continue processing
 CATCH_ERRORS = True
 
-# Timespan for pulling clients in seconds.
-# Set to 1hr (60 * 60) to match script.
-# PLEASE ADJUST THIS TO MATCH WHEN THE SCRIPT RUNS
-CLIENT_TIMESPAN = 3600
-
-# Base URL for Meraki API
+HERE = os.path.dirname(os.path.abspath(__file__))
 base_url = 'https://api.meraki.com/api/v1'
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 
 class FHI360ClientError(Exception):
     """ Custom error class
